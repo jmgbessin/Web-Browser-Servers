@@ -1,7 +1,10 @@
 import socket
 import urllib.parse
+import random
 
 ENTRIES = ['Pavel was here']
+
+SESSIONS = {}
 
 def handle_connection(conx):
     # the request line
@@ -22,8 +25,16 @@ def handle_connection(conx):
         body = req.read(length).decode('utf8')
     else:
         body = None
+        
+    # generate or obtain token cookie from browser
+    if "cookie" in headers:
+        token = headers["cookie"][len("token="):]
+    else:
+        token = str(random.random())[2:]
     
-    status, body = do_request(method, url, headers, body)
+    session = SESSIONS.setdefault(token, {})
+    status, body = do_request(session, method, url, headers, body)
+    
     print("do_request:\n")
     print(status)
     print(body)
@@ -33,6 +44,12 @@ def handle_connection(conx):
     response += "Content-Length: {}\r\n".format(
         len(body.encode('utf8'))
     )
+    
+    # new visitors need to remember their newly generated token
+    if "cookie" not in headers:
+        template = "Set-Cookie: token={}\r\n"
+        response += template.format(token)
+    
     response += "\r\n" + body
     conx.send(response.encode('utf8'))
     conx.close()
@@ -46,7 +63,7 @@ def form_decode(body):
         params[name] = value
     return params
 
-def add_entry(params):
+def add_entry(session, params):
     print("params:")
     print(params)
     print("\n")
@@ -62,20 +79,27 @@ def not_found(url, method):
     out += "<h1>{} {} not found</h1>".format(method, url)
     return out
     
-def do_request(method, url, headers, body):
+# the session data gets passed to individual pages like show_comments, add_entry
+def do_request(session, method, url, headers, body):
     if method == "GET" and url == "/":
-        return "200 OK", show_comments()
+        return "200 OK", show_comments(session)
     elif method == "POST" and url == "/add":
         params = form_decode(body)
-        return "200 OK", add_entry(params)
+        add_entry(session, params)
+        return "200 OK", show_comments(session)
     elif method == "GET" and url == "/comment.js":
         with open("comment.js") as f:
+            return "200 OK", f.read()
+    elif method == "GET" and url == "/comment.css":
+        with open("comment.css") as f:
             return "200 OK", f.read()
     else:
         return "404 Not Found"    
 
-def show_comments():
+def show_comments(session):
     out = "<!doctype html>"
+    out += "<script src=/comment.js></script>"
+    out += "<link rel='stylesheet' href=/comment.css>"
     out += "<form action=add method=post>"
     out += "<p><input name=guest></p>"
     out += "<p><button>Sign the book!</button></p>"
