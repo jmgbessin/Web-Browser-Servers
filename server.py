@@ -2,9 +2,18 @@ import socket
 import urllib.parse
 import random
 
-ENTRIES = ['Pavel was here']
+ENTRIES = [
+    ("No names. We are nameless!", "cerealkiller"),
+    ("HACK THE PLANET!!!", "crashoverride")
+]
 
 SESSIONS = {}
+
+# hardcoded user/password pairs
+LOGINS = {
+    "crashoverride": "0cool",
+    "cerealkiller": "emannuel"
+}
 
 def handle_connection(conx):
     # the request line
@@ -64,15 +73,9 @@ def form_decode(body):
     return params
 
 def add_entry(session, params):
-    print("params:")
-    print(params)
-    print("\n")
-    if 'guest' in params:
-        ENTRIES.append(params['guest'])
-    print("Entries:")
-    print(ENTRIES)
-    print("\n")
-    return show_comments()
+    if "user" not in session: return
+    if 'guest' in params and len(params['guest']) <= 100:
+        ENTRIES.append((params['guest'], session["user"]))
 
 def not_found(url, method):
     out = "<!doctype html>"
@@ -93,22 +96,50 @@ def do_request(session, method, url, headers, body):
     elif method == "GET" and url == "/comment.css":
         with open("comment.css") as f:
             return "200 OK", f.read()
+    elif method == "GET" and url == "/login":
+        return "200 OK", login_form(session)
+    elif method == "POST" and url == "/":
+        params = form_decode(body)
+        return do_login(session, params)
     else:
-        return "404 Not Found"    
+        return "404 Not Found", not_found(url, method)
+
+def do_login(session, params):
+    username = params.get("username")
+    password = params.get("password")
+    if username in LOGINS and LOGINS[username] == password:
+        session["user"] = username
+        return "200 OK", show_comments(session)
+    else:
+        out = "<!doctype html>"
+        out += "<h1>Invalid password for {}</h1>".format(username)
+        return "401 Unauthorized", out
+    
+def login_form(session):
+    body = "<!doctype html>"
+    body += "<form action=/ method=post>"
+    body += "<p>Username: <input name=username></p>"
+    body += "<p> Password: <input name=password type=password></p>"
+    body += "<p><button>Log in</button></p>"
+    body += "</form>"
+    return body  
 
 def show_comments(session):
     out = "<!doctype html>"
     out += "<script src=/comment.js></script>"
     out += "<link rel='stylesheet' href=/comment.css>"
-    out += "<form action=add method=post>"
-    out += "<p><input name=guest></p>"
-    out += "<p><button>Sign the book!</button></p>"
-    out += "</form>"
-    out += "<strong></strong>"
+    if "user" in session:
+        out += "<form action=add method=post>"
+        out += "<p><input name=guest></p>"
+        out += "<p><button>Sign the book!</button></p>"
+        out += "</form>"
+        out += "<strong></strong>"
+    else:
+        out += "<a href=/login>Sign in to write in the guest book</a>"
     print("Entries to be inserted in HTML:")
-    for entry in ENTRIES:
-        print(entry)
-        out += "<p>" + entry + "</p>"
+    for entry, who in ENTRIES:
+        out += "<p>" + entry + "\n"
+        out += "<i>by " + who + "</i></p>"
     print("\n")
     return out
 
