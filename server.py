@@ -1,6 +1,7 @@
 import socket
 import urllib.parse
 import random
+import html
 
 ENTRIES = [
     ("No names. We are nameless!", "cerealkiller"),
@@ -146,8 +147,12 @@ def show_comments(session):
         out += "<a href=/login>Sign in to write in the guest book</a>"
     print("Entries to be inserted in HTML:")
     for entry, who in ENTRIES:
-        out += "<p>" + entry + "\n"
-        out += "<i>by " + who + "</i></p>"
+    # html escape ensures that text (data) is not interpreted as code
+    # users shouldn't be able to comment javascript, introducing a script url
+    # into the new web page, and having the browser run malicious code
+    # the data will be encoded, with &lt instead of < for instance
+        out += "<p>" + html.escape(entry) + "\n"
+        out += "<i>by " + html.escape(who) + "</i></p>"
     print("\n")
     return out
 
