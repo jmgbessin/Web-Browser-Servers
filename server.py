@@ -56,7 +56,7 @@ def handle_connection(conx):
     
     # new visitors need to remember their newly generated token
     if "cookie" not in headers:
-        template = "Set-Cookie: token={}\r\n"
+        template = "Set-Cookie: token={}; SameSite=Lax\r\n"
         response += template.format(token)
     
     response += "\r\n" + body
