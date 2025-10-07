@@ -55,6 +55,7 @@ def handle_connection(conx):
     )
     
     # new visitors need to remember their newly generated token
+    # samesite policy is lax: allows GET requests and same host-name requests
     if "cookie" not in headers:
         template = "Set-Cookie: token={}; SameSite=Lax\r\n"
         response += template.format(token)
