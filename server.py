@@ -61,6 +61,10 @@ def handle_connection(conx):
         template = "Set-Cookie: token={}; SameSite=Lax\r\n"
         response += template.format(token)
     
+    # implementation of CSP in response to browser
+    csp = "default-src http://localhost:8000"
+    response += "Content-Security-Policy: {}\r\n".format(csp)
+    
     response += "\r\n" + body
     conx.send(response.encode('utf8'))
     conx.close()
@@ -132,6 +136,11 @@ def show_comments(session):
     out = "<!doctype html>"
     out += "<script src=/comment.js></script>"
     out += "<link rel='stylesheet' href=/comment.css>"
+    
+    # fake malicious script included to see if our browser will block
+    # links that do not adhere to CSP
+    out += "<script src=https://example.com/evil.js></script>"
+    
     if "user" in session:
         nonce = str(random.random())[2:]
         session["nonce"] = nonce
