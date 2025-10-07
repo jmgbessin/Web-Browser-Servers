@@ -73,6 +73,8 @@ def form_decode(body):
     return params
 
 def add_entry(session, params):
+    if "nonce" not in session or "nonce" not in params: return
+    if session["nonce"] != params["nonce"]: return
     if "user" not in session: return
     if 'guest' in params and len(params['guest']) <= 100:
         ENTRIES.append((params['guest'], session["user"]))
@@ -129,8 +131,13 @@ def show_comments(session):
     out += "<script src=/comment.js></script>"
     out += "<link rel='stylesheet' href=/comment.css>"
     if "user" in session:
+        nonce = str(random.random())[2:]
+        session["nonce"] = nonce
         out += "<form action=add method=post>"
         out += "<p><input name=guest></p>"
+        # this input would usually be hidden, but our browser doesn't support
+        # that
+        out += "<p><input name=nonce type=hidden value=" + nonce + "></p>"
         out += "<p><button>Sign the book!</button></p>"
         out += "</form>"
         out += "<strong></strong>"
